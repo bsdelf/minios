@@ -122,6 +122,9 @@ void InitIDT(void)
     for (int i = 0; i < NIDT; ++i) {
         SetIDTEntry(i, OnEmptyIsr, 0x08, INT_GATE, SEL_KPL);
     }
+
+    // TODO: rename OnIsr* and OnIrq* to specific handler function name like OnSyscall
+
     // ISR
     SetIDTEntry(IDT_DE,    OnIsr0,  0x08, INT_GATE, SEL_KPL);
     SetIDTEntry(IDT_DB,    OnIsr1,  0x08, INT_GATE, SEL_KPL);
