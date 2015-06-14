@@ -5,6 +5,14 @@
 #include <queue.h>
 #include "vm.h"
 
+/* Definitions for align */
+#define UMA_ALIGN_PTR   (sizeof(void *) - 1)    /* Alignment fit for ptr */
+#define UMA_ALIGN_LONG  (sizeof(long) - 1)  /* "" long */
+#define UMA_ALIGN_INT   (sizeof(int) - 1)   /* "" int */
+#define UMA_ALIGN_SHORT (sizeof(short) - 1) /* "" short */
+#define UMA_ALIGN_CHAR  (sizeof(char) - 1)  /* "" char */
+#define UMA_ALIGN_CACHE (0 - 1)         /* Cache line size align */
+
 typedef int (*uma_ctor_t)(void *mem, int size, void *arg, int flags);
 typedef void (*uma_dtor_t)(void *mem, int size, void *arg);
 typedef int (*uma_init_t)(void *mem, int size, int flags);
