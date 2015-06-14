@@ -78,6 +78,7 @@ void start(void* penv)
     //memcpy(0, bin, sizeof(bin));
     //ThreadCreate(0, NULL, false);
 
+    //TODO: need a scheduler to replace it
     HltLoop();
 }
 
