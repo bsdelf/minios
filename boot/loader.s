@@ -253,6 +253,9 @@ Protected:
     add edi, 4
     loop .sethigptes
 
+    ; drop two tmp vars
+    add esp, 8
+
     mov eax, cr0
     or eax, 0x80000000  ; set PG bit
     mov cr0, eax
