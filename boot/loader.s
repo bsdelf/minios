@@ -171,7 +171,7 @@ Protected:
     ; load elf kernel
     call LoadElf
 
-    ; | kernel | ~ | 4K guard | stack | 4K dir | 1M tables for 3-4G |
+    ; | kernel | ~ | stack guard | free stack | 4K dir | 1M tables for 3-4G |
 
     ; setup kernel stack
     mov eax, [INFO_KERN_VA]
@@ -183,7 +183,7 @@ Protected:
     add eax, [INFO_KERN_SIZE]
     add eax, 0xfff
     and eax, ~0xfff                 ; 4K aligned address to the end of kernel
-    mov [INFO_STACK_PA], eax        ; begin address of kernel stack guard
+    mov [INFO_STACK_PA], eax        ; begin address of kernel stack guard (4K)
 
     ; setup paging
     mov eax, [INFO_STACK_PA]
@@ -191,9 +191,9 @@ Protected:
     mov cr3, eax        ; note page directory pointer
 
     add eax, 0x1000
-    push eax            ; 1st PDE pointer for 0~4M
+    push eax            ; 1st PDE paddr for 0~4M
     add eax, 0x1000
-    push eax            ; 2-256 PDEs pointer for (3G+4M)~4G
+    push eax            ; 2nd PDE paddr
 
     ; bzero dir and tables
     mov eax, cr3
@@ -204,29 +204,29 @@ Protected:
     loop .bzdir
 
     ; init dir: x(1)...(768)....xxxx(255)
-    mov eax, [esp+4]        ; 1st PDE address
+    mov eax, [esp+4]        ; 1st PDE paddr
     and eax, ~0xfff         ; clear lower 12 bits
     or eax, 11b             ; us=0 rw=1 present=1
-    mov edi, cr3            ; 1st PDE pointer
-    mov [edi], eax
+    mov edi, cr3            ; get 1st PDE pointer
+    mov [edi], eax          ; set 1st PDE pointer 
 
     mov ecx, 255            ; set 2-256 PDEs
-    mov esi, [esp]          ; 2nd PDE address
+    mov esi, [esp]          ; get PDE paddr
     mov edi, cr3
-    add edi, (768+1)*4      ; 2nd PDE pointer
+    add edi, (768+1)*4      ; get PDE pointer
 .setpdes
     mov eax, esi
     and eax, ~0xfff
     or eax, 11b
-    mov [edi], eax
-    add esi, 0x1000
-    add edi, 4
+    mov [edi], eax          ; set PDE pointer
+    add esi, 0x1000         ; next PDE paddr
+    add edi, 4              ; next PDE pointer
     loop .setpdes
 
     ; init PTE, identity map 0-1M
     mov ecx, 256
     mov esi, 0
-    mov edi, [esp+4]        ; 1st PDE address
+    mov edi, [esp+4]        ; 1st PDE paddr
 .setlowptes
     mov eax, esi
     and eax, ~0xfff
@@ -241,9 +241,9 @@ Protected:
     sub ecx, [INFO_KERN_PA]
     add ecx, [INFO_STACK_SIZE]
     add ecx, 0x1000+0x100000
-    shr ecx, 12
+    shr ecx, 12                 ; we need ecx 4k pages
     mov esi, [INFO_KERN_PA]
-    mov edi, [esp]
+    mov edi, [esp]              ; 2nd PDE paddr
 .sethigptes
     mov eax, esi
     and eax, ~0xfff
