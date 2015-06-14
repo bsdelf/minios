@@ -11,7 +11,7 @@ asm ( assembler template
            );
 */
 
-static inline void Hlt(void)
+static inline void hlt(void)
 {
     __asm__ volatile("hlt");
 }
@@ -21,14 +21,14 @@ static inline void Nop(void)
     __asm__ volatile("nop");
 }
 
-static inline void HltLoop(void)
+static inline void hltloop(void)
 {
     while (true) {
         __asm__ volatile("hlt");
     }
 }
 
-static inline void OutB(uint16 port, uint8 data)
+static inline void outb(uint16 port, uint8 data)
 {
     __asm__ volatile(
         "outb %0, %1"
@@ -36,7 +36,7 @@ static inline void OutB(uint16 port, uint8 data)
         : "a"(data), "Nd"(port));
 }
 
-static inline uint8 InB(uint16 port)
+static inline uint8 inb(uint16 port)
 {
     uint8 data;
     __asm__ volatile(
@@ -46,7 +46,7 @@ static inline uint8 InB(uint16 port)
     return data;
 }
 
-static inline void WaitIO(void)
+static inline void waitio(void)
 {
     __asm__ volatile(
         "outb %%al, $0x80"

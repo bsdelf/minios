@@ -94,26 +94,26 @@ static inline void SetIDTEntry(uint8 num, IntCallback fn, uint16 selector, uint8
 void InitIDT(void)
 {
     // Remapping the PIC
-    OutB(PIC1_CMD, 0x11);
-    WaitIO();
-    OutB(PIC2_CMD, 0x11);
-    WaitIO();
-    OutB(PIC1_DATA, 0x20);
-    WaitIO();
-    OutB(PIC2_DATA, 0x28);
-    WaitIO();
-    OutB(PIC1_DATA, 0x04);
-    WaitIO();
-    OutB(PIC2_DATA, 0x02);
-    WaitIO();
-    OutB(PIC1_DATA, 0x01);
-    WaitIO();
-    OutB(PIC2_DATA, 0x01);
-    WaitIO();
-    OutB(PIC1_DATA, 0xff);
-    WaitIO();
-    OutB(PIC2_DATA, 0xff);
-    WaitIO();
+    outb(PIC1_CMD, 0x11);
+    waitio();
+    outb(PIC2_CMD, 0x11);
+    waitio();
+    outb(PIC1_DATA, 0x20);
+    waitio();
+    outb(PIC2_DATA, 0x28);
+    waitio();
+    outb(PIC1_DATA, 0x04);
+    waitio();
+    outb(PIC2_DATA, 0x02);
+    waitio();
+    outb(PIC1_DATA, 0x01);
+    waitio();
+    outb(PIC2_DATA, 0x01);
+    waitio();
+    outb(PIC1_DATA, 0xff);
+    waitio();
+    outb(PIC2_DATA, 0xff);
+    waitio();
 
     /*
      * 0-32: used by the CPU to report conditions, both normal and error
@@ -187,8 +187,8 @@ void IrqRouter(IrqRegs* regs)
 {
     // send EOI
     if (regs->intno >= 40)
-        OutB(PIC2_CMD, PIC_EOI);
-    OutB(PIC1_CMD, PIC_EOI);
+        outb(PIC2_CMD, PIC_EOI);
+    outb(PIC1_CMD, PIC_EOI);
 
     if (_irqhandles[regs->intno] != NULL) {
         _irqhandles[regs->intno](regs);

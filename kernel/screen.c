@@ -18,11 +18,11 @@ void screen_init(void)
 {
     int cmd0 = 0x03c8;
     int cmd1 = 0x03c9;
-    OutB(cmd0, 0);
+    outb(cmd0, 0);
     for (int i = 0; i < COLOR_COUNT; ++i) {
-        OutB(cmd1, RGB_TABLE[i][0]/4);
-        OutB(cmd1, RGB_TABLE[i][1]/4);
-        OutB(cmd1, RGB_TABLE[i][2]/4);
+        outb(cmd1, RGB_TABLE[i][0]/4);
+        outb(cmd1, RGB_TABLE[i][1]/4);
+        outb(cmd1, RGB_TABLE[i][2]/4);
     }
 
     _ctx.ram = env_get()->vram;

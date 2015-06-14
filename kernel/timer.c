@@ -22,9 +22,9 @@ void timer_init(uint32 frequency)
     uint8 l = (divisor & 0xff);
     uint8 h = (divisor >> 8);
 
-    OutB(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
-    OutB(TIMER_CNTR0, l);
-    OutB(TIMER_CNTR0, h);
+    outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
+    outb(TIMER_CNTR0, l);
+    outb(TIMER_CNTR0, h);
 }
 
 uint8 timer_ticks()

@@ -79,7 +79,7 @@ void start(void* penv)
     //ThreadCreate(0, NULL, false);
 
     //TODO: need a scheduler to replace it
-    HltLoop();
+    hltloop();
 }
 
 int task1(void* data)
