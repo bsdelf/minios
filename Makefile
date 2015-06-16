@@ -15,7 +15,7 @@ PA_KERNEL		= 0x100000			# should be at least PA_LOADER+wc(loader+kernel)
 SIZE_KSTACK		= 0x2000			# 4KB guard included
 
 VA_USER		= 0x400000
-VA_KERNEL	= 0xc0400000
+VA_KERNEL	= 0xc0000000
 
 .PHONY: all clean
 

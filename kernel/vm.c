@@ -29,9 +29,9 @@ static pte_t* kva2pte(uint32 va)
     // TODO: rmove hard code
     uint32 ipage = va >> VM_PAGE_SHIFT;
     uint32 itable = ipage / 1024;
-    likely (itable >= 1+768) {
-        // (3G+4M)~4G
-        return &_dir->tables[itable-(1+768)+1].pte[ipage%1024];
+    likely (itable >= 768) {
+        // 3G~4G
+        return &_dir->tables[itable-768+1].pte[ipage%1024];
     } else if (itable == 0) {
         // 0~4M
         return &_dir->tables[0].pte[ipage];
@@ -143,6 +143,7 @@ void vm_init(void)
 
     screen_clear();
     pm_status();
+
     /* init kernel heap */
     const uint32 heapsz = 5*1024*1024;
     {

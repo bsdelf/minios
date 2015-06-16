@@ -171,7 +171,7 @@ Protected:
     ; load elf kernel
     call LoadElf
 
-    ; | kernel | ~ | stack guard | free stack | 4K dir | 1M tables for 3-4G |
+    ; | kernel | ~ | stack guard | free stack | 1024 PDEs | 1024 PTEs * n | ~
 
     ; setup kernel stack
     mov eax, [INFO_KERN_VA]
@@ -188,12 +188,12 @@ Protected:
     ; setup paging
     mov eax, [INFO_STACK_PA]
     add eax, [INFO_STACK_SIZE]
-    mov cr3, eax        ; note page directory pointer
+    mov cr3, eax        ; set PD paddr
 
     add eax, 0x1000
-    push eax            ; 1st PDE paddr for 0~4M
+    push eax            ; 1st 1024 PTEs begin paddr for 0~4M
     add eax, 0x1000
-    push eax            ; 2nd PDE paddr
+    push eax            ; 2nd 1024 PTEs begin paddr for 3G~(3G+4M)
 
     ; bzero dir and tables
     mov eax, cr3
@@ -203,59 +203,57 @@ Protected:
     add eax, 4
     loop .bzdir
 
-    ; init dir: x(1)...(768)....xxxx(255)
-    mov eax, [esp+4]        ; 1st PDE paddr
+    ; init PDEs[1]
+    mov eax, [esp+4]        ; get 1st 1024 PTEs begin paddr
     and eax, ~0xfff         ; clear lower 12 bits
     or eax, 11b             ; us=0 rw=1 present=1
-    mov edi, cr3            ; get 1st PDE pointer
-    mov [edi], eax          ; set 1st PDE pointer 
+    mov edi, cr3            ; to 1st PDE
+    mov [edi], eax          ; set 1st PDE
 
-    mov ecx, 255            ; set 2-256 PDEs
-    mov esi, [esp]          ; get PDE paddr
-    mov edi, cr3
-    add edi, (768+1)*4      ; get PDE pointer
-.setpdes
-    mov eax, esi
-    and eax, ~0xfff
-    or eax, 11b
-    mov [edi], eax          ; set PDE pointer
-    add esi, 0x1000         ; next PDE paddr
-    add edi, 4              ; next PDE pointer
-    loop .setpdes
-
-    ; init PTE, identity map 0-1M
-    mov ecx, 256
-    mov esi, 0
-    mov edi, [esp+4]        ; 1st PDE paddr
+    ; init related 1024 PTEs, identity map 0-1M
+    mov ecx, 256            ; 1M/4K=256 times
+    mov esi, 0              ; target paddr
+    mov edi, [esp+4]        ; to 1st 1024 PTEs begin paddr
 .setlowptes
     mov eax, esi
     and eax, ~0xfff
     or eax, 11b
-    mov [edi], eax
-    add esi, 0x1000
-    add edi, 4
+    mov [edi], eax          ; map
+    add esi, 0x1000         ; to next paddr
+    add edi, 4              ; to next PTE
     loop .setlowptes
 
-    ; init PTE, map INFO_KERN_PA~nM to 3~nG
-    mov ecx, [INFO_STACK_PA]
-    sub ecx, [INFO_KERN_PA]
-    add ecx, [INFO_STACK_SIZE]
-    add ecx, 0x1000+0x100000
-    shr ecx, 12                 ; we need ecx 4k pages
-    mov esi, [INFO_KERN_PA]
-    mov edi, [esp]              ; 2nd PDE paddr
+    ; init PDE[768]
+    mov ecx, 1              ; n times (map 4M*n)
+    mov esi, [esp]          ; to 2nd 1024 PTEs begin paddr
+    mov edi, cr3
+    add edi, 768*4          ; to 768th PDE
+.setpdes
+    mov eax, esi
+    and eax, ~0xfff
+    or eax, 11b
+    mov [edi], eax          ; set 768th PDE
+    add esi, 0x1000         ; to next 1024 PTEs begin paddr
+    add edi, 4              ; to next PDE
+    loop .setpdes
+
+    ; init related 1024 PTEs, map INFO_KERN_PA~nM to 3G~(3G+4M)
+    mov ecx, 1024               ; 1024 * 4K
+    mov esi, [INFO_KERN_PA]     ; target paddr
+    mov edi, [esp]              ; to 2nd 1024 PTEs begin paddr
 .sethigptes
     mov eax, esi
     and eax, ~0xfff
     or eax, 11b
     mov [edi], eax
-    add esi, 0x1000
-    add edi, 4
+    add esi, 0x1000             ; to next paddr
+    add edi, 4                  ; to next PTE
     loop .sethigptes
 
     ; drop two tmp vars
-    add esp, 8
+    add esp, 4*2
 
+    ; enable paging
     mov eax, cr0
     or eax, 0x80000000  ; set PG bit
     mov cr0, eax
