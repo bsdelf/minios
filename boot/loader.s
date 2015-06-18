@@ -19,8 +19,6 @@
     or al, 10b
     out 0x92, al
 
-    lgdt [GDT_PTR]
-
     ; update control register 0
     mov eax, cr0
     and eax, 0x7fffffff ; clear PG bit, disable paging
@@ -28,7 +26,10 @@
     mov cr0, eax
 
     ; far jump to protected mode
+    lgdt [GDT_PTR]
     jmp SEL_GDT_X:Protected
+
+;----------------------------------------------------------
 
 ; check keyboard
 CheckKeyboard:
@@ -151,6 +152,8 @@ SwitchVideo:
 .Done
     ret
 
+;----------------------------------------------------------
+
 [bits 32]
 Protected:
     ; now cs=SEL_GDT_X, we do not need far call/jmp any more
@@ -198,7 +201,7 @@ Protected:
     add eax, 0x1000
     push eax                        ; 1st 1024 PTEs begin paddr for 0~4M
     add eax, 0x1000*768
-    push eax                        ; 2nd 1024 PTEs begin paddr for 3G~(3G+4M)
+    push eax                        ; 769th 1024 PTEs begin paddr for 3G~(3G+4M)
 
     ; bzero dir and tables
     mov eax, cr3
@@ -208,14 +211,21 @@ Protected:
     add eax, 4
     loop .bzdir
 
-    ; init 1st PDE
-    mov edi, cr3            ; to 1st PDE
-    mov eax, [esp+4]        ; get related 1024 PTEs begin paddr
-    and eax, ~0xfff         ; clear lower 12 bits
-    or eax, 11b             ; us=0 rw=1 present=1
-    mov [edi], eax          ; set 1st PDE
+    ; init all PDEs
+    mov ecx, 1024
+    mov edi, cr3            ; 1st PDE
+    mov esi, cr3
+    add esi, 0x1000         ; 1st 1024 PTEs
+.setpdes
+    mov eax, esi
+    and eax, ~0xfff
+    or eax, 11b
+    mov [edi], eax          ; set PDE
+    add edi, 4              ; to next PDE
+    add esi, 0x1000         ; to next 1024 PTEs begin paddr
+    loop .setpdes
 
-    ; init related 1024 PTEs, identity map 0-1M
+    ; init 1st 1024 PTEs partially, identity map 0-1M
     mov ecx, 256            ; 1M/4K=256 times
     mov esi, 0              ; target paddr
     mov edi, [esp+4]        ; to 1st 1024 PTEs begin paddr
@@ -228,25 +238,13 @@ Protected:
     add edi, 4              ; to next PTE
     loop .setlowptes
 
-    NPDE equ 5
-    ; init 768th PDE
-    mov ecx, NPDE           ; map 4M * NPDE
-    mov edi, cr3
-    add edi, 768*4          ; to 768th PDE
-    mov esi, [esp]          ; to 2nd 1024 PTEs begin paddr
-.setpdes
-    mov eax, esi
-    and eax, ~0xfff
-    or eax, 11b
-    mov [edi], eax          ; set 768th PDE
-    add esi, 0x1000         ; to next 1024 PTEs begin paddr
-    add edi, 4              ; to next PDE
-    loop .setpdes
-
-    ; init related 1024 PTEs, map INFO_KERN_PA~nM to 3G~(3G+4M)
-    mov ecx, 1024*NPDE          ; 1024 * 4K
+    ; init 769th 1024 PTEs partially, map INFO_KERN_PA~nM to 3G~(3G+nM)
+    mov ecx, [INFO_DIR_PA]
+    sub ecx, [INFO_KERN_PA]
+    add ecx, 0x1000*1025        ; physical memory used
+    shr ecx, 12                 ; pages used
     mov esi, [INFO_KERN_PA]     ; target paddr
-    mov edi, [esp]              ; to 2nd 1024 PTEs begin paddr
+    mov edi, [esp]              ; to 769th 1024 PTEs begin paddr
 .sethigptes
     mov eax, esi
     and eax, ~0xfff
@@ -271,6 +269,8 @@ Protected:
     push dword PA_INFO              ; arg0
     mov eax, [INFO_KERN_ENTRY]
     call eax
+
+;----------------------------------------------------------
 
 LoadElf:
     mov eax, 0x464C457F             ; ELF magic
@@ -360,6 +360,8 @@ Die:
     mov ax, 10
     mov bx, 0
     div bx
+
+;----------------------------------------------------------
 
 GDT:        Descriptor  0,  0,         0                        ; dummy
 GDT_X:      Descriptor  0,  0xfffff,   DA_CXR|DA_32|DA_LIMIT_4K ; 0~4G code segment
