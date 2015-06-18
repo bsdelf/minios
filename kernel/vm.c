@@ -26,33 +26,24 @@ extern void EnablePaging();
 
 static pte_t* kva2pte(uint32 va)
 {
-    // TODO: rmove hard code
     uint32 ipage = va >> VM_PAGE_SHIFT;
-    uint32 itable = ipage / 1024;
-    likely (itable >= 768) {
-        // 3G~4G
-        return &_dir->tables[itable-768+1].pte[ipage%1024];
-    } else if (itable == 0) {
-        // 0~4M
-        return &_dir->tables[0].pte[ipage];
-    }
-    return NULL;
+    return &_dir->pte[ipage];
 }
 
 void vm_init(void)
 {
-    /* Virtual memory layout
+    /* virtual memory layout
      *
      * -------------------
      *  kernel         nK                           \
      * -------------------                           \
      *  guard          4K \                           |
-     * ------------------- +--> kernel stack          |
+     *                     +--> kernel stack          |
      *  stack          nK /                           +--> loader knows
      * -------------------                            |
-     *  dir            4K \                           | 
-     * ------------------- +--> KernelDirectory      /
-     *  tables         1M /                         /
+     *  PDEs           4K \                           | 
+     *                     +--> kernel directory     /
+     *  PTEs           4M /                         /
      * ------------------- 
      *  vm_page        nK
      * -------------------
@@ -83,8 +74,10 @@ void vm_init(void)
     const int64 poff =  (int64)_kernPaddr - _kernVaddr;
 
     /* init dir (loader already did it) */
-    _dir = (KernelDirectory*)(env_get()->stack_va + env_get()->stack_size);
+    _dir = (KernelDirectory*)(env_get()->dir_va);
     uint32 endofDir = (uint32)_dir + sizeof(KernelDirectory);
+
+    //screen_printf("dir: 0x%X", _dir);
 
     /* init physical memory management */
     /* TODO:
@@ -102,15 +95,15 @@ void vm_init(void)
         for (uint32 off = pa; off < maxbeg + maxlen; off += VM_PAGE_SIZE) {
             ++npage;
         }
-        uint32 size = sizeof(vm_page_t) * npage;
-        size = ALIGN_4K(size);
-        for (vm_addr_t i = 0; i < size; i += VM_PAGE_SIZE) {
+        uint32 sz = sizeof(vm_page_t) * npage;
+        sz = ALIGN_4K(sz);
+        for (vm_addr_t i = 0; i < sz; i += VM_PAGE_SIZE) {
             vm_mapva(va+i, pa+i, false, true);
         }
 
         // init pages for the segment
         vm_page_t* pages = (vm_page_t*)va;
-        bzero(pages, size);
+        bzero(pages, sz);
         for (uint32 i = 0; i < npage; ++i) {
             pages[i].pa = pa + i * VM_PAGE_SIZE;
             pages[i].order = PM_NORDER;
@@ -118,7 +111,7 @@ void vm_init(void)
 
         // give it to pm
         pm_add_seg(pa, maxbeg+maxlen, pages, npage);
-        endofPm = va + size;
+        endofPm = va + sz;
     }
 
     /* init video memory */
@@ -145,7 +138,7 @@ void vm_init(void)
     pm_status();
 
     /* init kernel heap */
-    const uint32 heapsz = 5*1024*1024;
+    const uint32 heapsz = 2*1024*1024;
     {
         uint32 va = endofVideo;
         uint32 pa = endofVideo + poff;
@@ -191,10 +184,8 @@ vm_addr_t vm_sbrk(uint32 subsym, vm_addr_t end)
 
 void vm_mapva(uint32 va, uint32 pa, bool us, bool rw)
 {
-    uint32 iframe = pa >> VM_PAGE_SHIFT;
-
     pte_t* pte = kva2pte(va);
-    pte->frame = iframe;
+    pte->frame = pa >> VM_PAGE_SHIFT;
     pte->present = 1;
     pte->us = us ? 1 : 0;
     pte->rw = rw ? 1 : 0;

@@ -171,7 +171,7 @@ Protected:
     ; load elf kernel
     call LoadElf
 
-    ; | kernel | ~ | stack guard | free stack | 1024 PDEs | 1024 PTEs * n | ~
+    ; | kernel | ~ | stack guard | free stack | 1024 PDEs | 1024 PTEs * 1024 | ~
 
     ; setup kernel stack
     mov eax, [INFO_KERN_VA]
@@ -188,26 +188,31 @@ Protected:
     ; setup paging
     mov eax, [INFO_STACK_PA]
     add eax, [INFO_STACK_SIZE]
-    mov cr3, eax        ; set PD paddr
+    mov [INFO_DIR_PA], eax
+    mov cr3, eax                    ; set PD paddr
+    mov eax, [INFO_STACK_VA]
+    add eax, [INFO_STACK_SIZE]
+    mov [INFO_DIR_VA], eax
 
+    mov eax, cr3
     add eax, 0x1000
-    push eax            ; 1st 1024 PTEs begin paddr for 0~4M
-    add eax, 0x1000
-    push eax            ; 2nd 1024 PTEs begin paddr for 3G~(3G+4M)
+    push eax                        ; 1st 1024 PTEs begin paddr for 0~4M
+    add eax, 0x1000*768
+    push eax                        ; 2nd 1024 PTEs begin paddr for 3G~(3G+4M)
 
     ; bzero dir and tables
     mov eax, cr3
-    mov ecx, 1024+1024*1024/4
+    mov ecx, 1024+1024*1024
 .bzdir
     mov dword [eax], 0
     add eax, 4
     loop .bzdir
 
-    ; init PDEs[1]
-    mov eax, [esp+4]        ; get 1st 1024 PTEs begin paddr
+    ; init 1st PDE
+    mov edi, cr3            ; to 1st PDE
+    mov eax, [esp+4]        ; get related 1024 PTEs begin paddr
     and eax, ~0xfff         ; clear lower 12 bits
     or eax, 11b             ; us=0 rw=1 present=1
-    mov edi, cr3            ; to 1st PDE
     mov [edi], eax          ; set 1st PDE
 
     ; init related 1024 PTEs, identity map 0-1M
@@ -223,11 +228,12 @@ Protected:
     add edi, 4              ; to next PTE
     loop .setlowptes
 
-    ; init PDE[768]
-    mov ecx, 1              ; n times (map 4M*n)
-    mov esi, [esp]          ; to 2nd 1024 PTEs begin paddr
+    NPDE equ 5
+    ; init 768th PDE
+    mov ecx, NPDE           ; map 4M * NPDE
     mov edi, cr3
     add edi, 768*4          ; to 768th PDE
+    mov esi, [esp]          ; to 2nd 1024 PTEs begin paddr
 .setpdes
     mov eax, esi
     and eax, ~0xfff
@@ -238,7 +244,7 @@ Protected:
     loop .setpdes
 
     ; init related 1024 PTEs, map INFO_KERN_PA~nM to 3G~(3G+4M)
-    mov ecx, 1024               ; 1024 * 4K
+    mov ecx, 1024*NPDE          ; 1024 * 4K
     mov esi, [INFO_KERN_PA]     ; target paddr
     mov edi, [esp]              ; to 2nd 1024 PTEs begin paddr
 .sethigptes

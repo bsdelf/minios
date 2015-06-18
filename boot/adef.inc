@@ -18,11 +18,13 @@ INFO_KERN_PA      equ INFO_VRAM+4         ; 4B kernel physical address
 INFO_KERN_VA      equ INFO_KERN_PA+4      ; 4B kernel virtual address
 INFO_KERN_ENTRY   equ INFO_KERN_VA+4      ; 4B kernel entry's virtual address
 INFO_KERN_SIZE    equ INFO_KERN_ENTRY+4   ; 4B kernel in-memory space
-INFO_STACK_PA     equ INFO_KERN_SIZE+4    ; 4B kernel physical stack address
-INFO_STACK_VA     equ INFO_STACK_PA+4     ; 4B kernel virtual stack address
+INFO_STACK_PA     equ INFO_KERN_SIZE+4    ; 4B kernel stack physical address
+INFO_STACK_VA     equ INFO_STACK_PA+4     ; 4B kernel stack virtual address
 INFO_STACK_SIZE   equ INFO_STACK_VA+4     ; 4B
+INFO_DIR_PA       equ INFO_STACK_SIZE+4   ; 4B page directory physical address
+INFO_DIR_VA       equ INFO_DIR_PA+4       ; 4B page directory virtual adress
 
-ASSETS  equ INFO_STACK_SIZE+4   ; 4+4*nB
+;ASSETS  equ INFO_STACK_SIZE+4   ; 4+4*nB
 
 VBE640x480  equ 0x101   ; 640*480*8bit
 VBE800x600  equ 0x103   ; 800*600*8bit

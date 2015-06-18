@@ -33,7 +33,9 @@ typedef struct {
     uint32 kern_size;
     uint32 stack_pa;
     uint32 stack_va;
-    uint16 stack_size;
+    uint32 stack_size;
+    uint32 dir_pa;
+    uint32 dir_va;
 } env_t;
 #pragma pack(pop)
 

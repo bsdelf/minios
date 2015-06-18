@@ -54,13 +54,10 @@ typedef struct {
     uint32 frame        : 20;   // frame address (shifted right 12 bits)
 } pde_t; // 4B
 
-// TODO: remove hard code 256
 typedef struct {
     pde_t pde[1024];
-    struct {
-        pte_t pte[1024];
-    } tables[256];              // [0] => 0~4M, [1] => (3G+4M)~4G
-} KernelDirectory; // 4K+1M
+    pte_t pte[1024*1024];
+} KernelDirectory; // 4K+4M
 
 #pragma pack(pop)
 
