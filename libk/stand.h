@@ -34,6 +34,7 @@ extern void* memcpy(void *dst0, const void* src0, size_t length);
 #define ALIGN_16(n) (((n) + 15) & ~15)
 #define ALIGN_32(n) (((n) + 31) & ~31)
 #define ALIGN_4K(n) (((n) + 0xfff) & ~0xfff)
+#define TRUNC_4K(n) (((n) >> 12) << 12)
 
 extern char const hex2ascii_data[];
 #define hex2ascii(hex)  (hex2ascii_data[hex])
