@@ -12,7 +12,7 @@ PA_INFO			= 0x500				# up to 0x7c00, 30KB, BUT be careful about boot's stack
 PA_BOOT			= 0x7c00			# 512 bytes
 PA_LOADER		= 0x7e00			# up to 0x7ffff, 480.5KB
 PA_KERNEL		= 0x100000			# should be at least PA_LOADER+wc(loader+kernel)
-SIZE_KSTACK		= 0x2000			# 4KB guard included
+SIZE_KSTACK		= 0x5000			# 4K guard included
 
 VA_USER		= 0x400000
 VA_KERNEL	= 0xc0000000
