@@ -56,8 +56,8 @@ void vm_init(void)
 
     uint64 maxbeg = 0;
     uint64 maxlen = 0;
-    for (int i = 0; i < env_get()->nhmem; ++i) {
-        const smap_entry_t* entry = env_get()->ehmem+i;
+    for (int i = 0; i < env_bootinfo()->nhmem; ++i) {
+        const smap_entry_t* entry = env_bootinfo()->ehmem+i;
         uint64 base = (((uint64)entry->baseh) << 32) + entry->basel;
         uint64 length = (((uint64)entry->lengthh) << 32) + entry->lengthl;
 
@@ -69,16 +69,16 @@ void vm_init(void)
         }
     }
 
-    _kernPaddr = env_get()->kern_pa;
-    _kernVaddr = env_get()->kern_va;
+    _kernPaddr = env_bootinfo()->kern_pa;
+    _kernVaddr = env_bootinfo()->kern_va;
     const int64 poff =  (int64)_kernPaddr - _kernVaddr;
 
     /* init dir (loader already did it) */
-    _dir = (KernelDirectory*)(env_get()->dir_va);
+    _dir = (KernelDirectory*)(env_bootinfo()->dir_va);
 
-    uint32 endofVideo = env_get()->video_va + env_get()->video_size;
+    uint32 endofVideo = env_bootinfo()->video_va + env_bootinfo()->video_size;
     screen_clear();
-    screen_printf("dir: 0x%X\n", env_get()->video_va);
+    screen_printf("dir: 0x%X\n", env_bootinfo()->video_va);
 
     /* init physical memory management */
     /* TODO:
@@ -131,7 +131,7 @@ void vm_init(void)
     
     /* activate kernel stack guard */
     {
-        uint32 guard = env_get()->stack_va;
+        uint32 guard = env_bootinfo()->stack_va;
         kva2pte(guard)->present = 0;
     }
 

@@ -38,10 +38,10 @@ typedef struct {
     uint32 stack_size;
     uint32 dir_pa;
     uint32 dir_va;
-} env_t;
+} bootinfo_t;
 #pragma pack(pop)
 
-void env_init(void* addr);
-env_t* env_get(void);
+void env_init(void* va);
+bootinfo_t* env_bootinfo(void);
 
 #endif

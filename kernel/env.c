@@ -1,14 +1,14 @@
 #include "env.h"
 #include <stand.h>
 
-static env_t _env;
+static bootinfo_t _bootinfo;
 
-void env_init(void* addr)
+void env_init(void* va)
 {
-    memcpy(&_env, addr, sizeof(env_t));
+    memcpy(&_bootinfo, va, sizeof(bootinfo_t));
 }
 
-env_t* env_get(void)
+bootinfo_t* env_bootinfo(void)
 {
-    return &_env;
+    return &_bootinfo;
 }

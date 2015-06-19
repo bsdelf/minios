@@ -18,21 +18,21 @@ int task1(void* data);
 int task2(void* data);
 int task3(void* data);
 
-void start(void* penv)
+void start(void* env)
 {
     /* NOTE: loader already did "cli" */
-    env_init(penv);
+    env_init(env);
     screen_init();
     vm_init();
     InitGDT();
     InitIDT();
 
     //screen_clear();
-    screen_printf("%d\n", env_get()->video_size);
+    screen_printf("%d\n", env_bootinfo()->video_size);
     screen_printf("kernsz: %d, stack: 0x%X, vram: 0x%X\n", 
-            env_get()->kern_size,
-            env_get()->stack_va,
-            env_get()->video_va);
+            env_bootinfo()->kern_size,
+            env_bootinfo()->stack_va,
+            env_bootinfo()->video_va);
 
     InitThreading();
     timer_init(100);
