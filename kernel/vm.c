@@ -57,7 +57,7 @@ void vm_init(void)
     uint64 maxbeg = 0;
     uint64 maxlen = 0;
     for (int i = 0; i < env_get()->nhmem; ++i) {
-        const SmapEntry* entry = env_get()->ehmem+i;
+        const smap_entry_t* entry = env_get()->ehmem+i;
         uint64 base = (((uint64)entry->baseh) << 32) + entry->basel;
         uint64 length = (((uint64)entry->lengthh) << 32) + entry->lengthl;
 
@@ -159,6 +159,7 @@ void vm_init(void)
 
 vm_addr_t vm_sbrk(uint32 subsym, vm_addr_t end)
 {
+    return 0;
 }
 
 void vm_mapva(uint32 va, uint32 pa, bool us, bool rw)

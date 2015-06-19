@@ -12,7 +12,7 @@ typedef struct {
     uint16 type;
     uint16 acpi;
     uint32 padding;
-} SmapEntry; // 24B
+} smap_entry_t; // 24B
 
 typedef struct {
     uint8 cyls;
@@ -20,7 +20,7 @@ typedef struct {
 
     uint16 lmem;
     uint16 nhmem;
-    SmapEntry ehmem[10];
+    smap_entry_t ehmem[10];
 
     uint16 vmode;
     uint16 xpixel;
