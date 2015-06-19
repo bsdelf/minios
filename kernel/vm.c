@@ -32,28 +32,6 @@ static pte_t* kva2pte(uint32 va)
 
 void vm_init(void)
 {
-    /* virtual memory layout
-     *
-     * -------------------
-     *  kernel         nK                           \
-     * -------------------                           \
-     *  guard          4K \                           |
-     *                     +--> kernel stack          |
-     *  stack          nK /                           |
-     * -------------------                            +--> loader knows
-     *  PDEs           4K \                           | 
-     *                     +--> kernel directory      |
-     *  PTEs           4M /                           |
-     * -------------------                           /
-     *  video  ALIGN(w*hB) ---> video buffer        /
-     * -------------------
-     *  vm_page        nK
-     * -------------------
-     *  UMA            nM
-     * -------------------
-     *
-     */
-
     uint64 maxbeg = 0;
     uint64 maxlen = 0;
     for (int i = 0; i < env_bootinfo()->nhmem; ++i) {

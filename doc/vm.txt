@@ -1,0 +1,22 @@
+virtual memory layout
+
+-------------------
+ kernel         nK                           \
+-------------------                           \
+ guard          4K \                           |
+                    +--> kernel stack          |
+ stack          nK /                           |
+-------------------                            +--> loader knows
+ PDEs           4K \                           | 
+                    +--> kernel directory      |
+ PTEs           4M /                           |
+-------------------                           /
+ video  ALIGN(w*hB) ---> video buffer        /
+-------------------
+ vm_page        nK
+-------------------
+ UMA            nM
+-------------------
+
+
+
