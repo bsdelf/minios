@@ -25,7 +25,7 @@ void screen_init(void)
         outb(cmd1, RGB_TABLE[i][2]/4);
     }
 
-    _ctx.ram = env_get()->vram;
+    _ctx.ram = env_get()->video_va;
     _ctx.w = env_get()->xpixel;
     _ctx.h = env_get()->ypixel;
     _ctx.col = 0;
@@ -34,11 +34,6 @@ void screen_init(void)
     _ctx.row_max = _ctx.h / FONT_HEIGHT;
     _ctx.fg = COLOR_White;
     _ctx.bg = COLOR_Black;
-}
-
-void setvram()
-{
-    _ctx.ram = env_get()->vram;
 }
 
 void screen_clear(void)

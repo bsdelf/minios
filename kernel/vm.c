@@ -75,9 +75,10 @@ void vm_init(void)
 
     /* init dir (loader already did it) */
     _dir = (KernelDirectory*)(env_get()->dir_va);
-    uint32 endofDir = (uint32)_dir + sizeof(KernelDirectory);
 
-    //screen_printf("dir: 0x%X", _dir);
+    uint32 endofVideo = env_get()->video_va + env_get()->video_size;
+    screen_clear();
+    screen_printf("dir: 0x%X\n", env_get()->video_va);
 
     /* init physical memory management */
     /* TODO:
@@ -87,7 +88,7 @@ void vm_init(void)
     pm_init();
     uint32 endofPm = 0;
     {
-        uint32 va = endofDir;
+        uint32 va = endofVideo;
         uint32 pa = va + poff;
 
         // use maximum segment only
@@ -114,34 +115,13 @@ void vm_init(void)
         endofPm = va + sz;
     }
 
-    /* init video memory */
-    /* TODO:
-     * We based on an assumption that
-     * the physical address of the video memory(usually very high)
-     * won't be conflict with the memory we've already used.
-     * This might be a potential issue.
-     */
-    uint32 endofVideo = 0;
-    {
-        uint32 pa = env_get()->vram;
-        uint32 va = ALIGN_4K(endofPm);
-        uint32 size = ALIGN_4K(env_get()->xpixel * env_get()->ypixel);
-        endofVideo = va + size;
-        for (uint32 i = 0; i < size; i += VM_PAGE_SIZE) {
-            vm_mapva(va+i, pa+i, false, true);
-        }
-        env_get()->vram = va;
-        setvram();
-    }
-
-    screen_clear();
     pm_status();
 
     /* init kernel heap */
     const uint32 heapsz = 2*1024*1024;
     {
-        uint32 va = endofVideo;
-        uint32 pa = endofVideo + poff;
+        uint32 va = endofPm;
+        uint32 pa = endofPm + poff;
         for (uint32 i = 0; i < heapsz; i += VM_PAGE_SIZE) {
             vm_page_t* page = pm_alloc(0);
             vm_mapva(va+i, page->pa, false, true);
@@ -172,7 +152,6 @@ void vm_init(void)
     _dir->pde[(1*1024*1024821-0x1000)/0x1000/1024].us = 1;
     */
 
-    setvram();
     SetIsrHandler(IDT_PF, &OnPageFault);
     //LoadPageDirectory((uint32)&_dir->pde);
     //EnablePaging();

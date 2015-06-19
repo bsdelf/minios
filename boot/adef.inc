@@ -9,12 +9,14 @@ INFO_LMEM   equ INFO_LEDS+1      ; 2B 0~0x500~nKB
 INFO_NHMEM  equ INFO_LMEM+2      ; 2B
 INFO_EHMEM  equ INFO_NHMEM+2     ; 10 entry, each takes 24B, see BootInfo.h
 
-INFO_VMODE  equ INFO_EHMEM+24*10 ; 2B
-INFO_XPIXEL equ INFO_VMODE+2     ; 2B
-INFO_YPIXEL equ INFO_XPIXEL+2    ; 2B
-INFO_VRAM   equ INFO_YPIXEL+2    ; 4B
+INFO_VMODE      equ INFO_EHMEM+24*10 ; 2B
+INFO_XPIXEL     equ INFO_VMODE+2     ; 2B
+INFO_YPIXEL     equ INFO_XPIXEL+2    ; 2B
+INFO_VIDEO_PA   equ INFO_YPIXEL+2    ; 4B
+INFO_VIDEO_VA   equ INFO_VIDEO_PA+4  ; 4B
+INFO_VIDEO_SIZE equ INFO_VIDEO_VA+4  ; 4B
 
-INFO_KERN_PA      equ INFO_VRAM+4         ; 4B kernel physical address
+INFO_KERN_PA      equ INFO_VIDEO_SIZE+4   ; 4B kernel physical address
 INFO_KERN_VA      equ INFO_KERN_PA+4      ; 4B kernel virtual address
 INFO_KERN_ENTRY   equ INFO_KERN_VA+4      ; 4B kernel entry's virtual address
 INFO_KERN_SIZE    equ INFO_KERN_ENTRY+4   ; 4B kernel in-memory space

@@ -28,10 +28,11 @@ void start(void* penv)
     InitIDT();
 
     //screen_clear();
+    screen_printf("%d\n", env_get()->video_size);
     screen_printf("kernsz: %d, stack: 0x%X, vram: 0x%X\n", 
             env_get()->kern_size,
             env_get()->stack_va,
-            env_get()->vram);
+            env_get()->video_va);
 
     InitThreading();
     timer_init(100);
@@ -46,8 +47,8 @@ void start(void* penv)
     *(int*)p = a;
     */
 
-    ThreadCreate(task1, NULL, true);
-    ThreadCreate(task2, NULL, true);
+    //ThreadCreate(task1, NULL, true);
+    //ThreadCreate(task2, NULL, true);
     //ThreadCreate(task3, "xx", true);
     //ThreadCreate(task3, "yy", true);
 

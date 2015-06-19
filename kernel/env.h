@@ -25,7 +25,9 @@ typedef struct {
     uint16 vmode;
     uint16 xpixel;
     uint16 ypixel;
-    uint32 vram;
+    uint32 video_pa;
+    uint32 video_va;
+    uint32 video_size;
 
     uint32 kern_pa;
     uint32 kern_va;

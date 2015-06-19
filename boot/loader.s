@@ -135,7 +135,7 @@ SwitchVideo:
     mov ax, [es:di+0x14]
     mov [INFO_YPIXEL], ax
     mov eax, [es:di+0x28]
-    mov [INFO_VRAM], eax
+    mov [INFO_VIDEO_PA], eax
 
     jmp .Done
 
@@ -147,7 +147,7 @@ SwitchVideo:
     mov byte  [INFO_VMODE],  8
     mov word  [INFO_XPIXEL], 320
     mov word  [INFO_YPIXEL], 200
-    mov dword [INFO_VRAM],   0xa0000
+    mov dword [INFO_VIDEO_PA],  0xa0000
 
 .Done
     ret
@@ -238,7 +238,7 @@ Protected:
     add edi, 4              ; to next PTE
     loop .setlowptes
 
-    ; init 769th 1024 PTEs partially, map INFO_KERN_PA~nM to 3G~(3G+nM)
+    ; init PTEs from 769th, map INFO_KERN_PA~nM to 3G~(3G+nM)
     mov ecx, [INFO_DIR_PA]
     sub ecx, [INFO_KERN_PA]
     add ecx, 0x1000*1025        ; physical memory used
@@ -257,6 +257,35 @@ Protected:
     ; drop two tmp vars
     add esp, 4*2
 
+    ; reserve & map video memory
+    mov eax, [INFO_DIR_VA]
+    add eax, 0x1000*1025
+    mov [INFO_VIDEO_VA], eax
+    mov ax, [INFO_XPIXEL]
+    movzx eax, ax
+    mov bx, [INFO_YPIXEL]
+    movzx ebx, bx
+    imul eax, ebx
+    add eax, 0xfff
+    and eax, ~0xfff
+    mov [INFO_VIDEO_SIZE], eax  ; make sure 4K aligned
+
+    mov esi, [INFO_VIDEO_PA]    ; paddr
+    mov edi, [INFO_VIDEO_VA]
+    shr edi, 10                 ; offset inside 1024*1024 PTEs
+    add edi, [INFO_DIR_PA]
+    add edi, 0x1000             ; paddr of the PTE
+    mov ecx, [INFO_VIDEO_SIZE]
+    shr ecx, 12                 ; # of pages
+.setvidptes
+    mov eax, esi
+    and eax, ~0xfff
+    or eax, 11b
+    mov [edi], eax
+    add esi, 0x1000             ; to next paddr
+    add edi, 4                  ; to next PTE
+    loop .setvidptes
+
     ; enable paging
     mov eax, cr0
     or eax, 0x80000000  ; set PG bit
@@ -269,6 +298,9 @@ Protected:
     push dword PA_INFO              ; arg0
     mov eax, [INFO_KERN_ENTRY]
     call eax
+.deadcode
+    hlt
+    jmp .deadcode
 
 ;----------------------------------------------------------
 
