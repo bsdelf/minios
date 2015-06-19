@@ -39,15 +39,15 @@ void vm_init(void)
      * -------------------                           \
      *  guard          4K \                           |
      *                     +--> kernel stack          |
-     *  stack          nK /                           +--> loader knows
-     * -------------------                            |
+     *  stack          nK /                           |
+     * -------------------                            +--> loader knows
      *  PDEs           4K \                           | 
-     *                     +--> kernel directory     /
-     *  PTEs           4M /                         /
-     * ------------------- 
-     *  vm_page        nK
+     *                     +--> kernel directory      |
+     *  PTEs           4M /                           |
+     * -------------------                           /
+     *  video  ALIGN(w*hB) ---> video buffer        /
      * -------------------
-     *  video        w*hB
+     *  vm_page        nK
      * -------------------
      *  UMA            nM
      * -------------------
