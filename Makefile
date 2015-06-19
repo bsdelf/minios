@@ -39,19 +39,19 @@ ${WORKDIR}/loader.bin: boot/loader.s boot/adef.inc Makefile
 
 # kernel
 ${WORKDIR}/kernel.elf: kernel/* libk/*
-	eb cc=$(CC)\
-		workdir="${WORKDIR}" \
-    	flag="${CFLAGS} -c -Ilibk/" \
+	eb workdir="${WORKDIR}" \
+    	cc=$(CC) flag="${CFLAGS} -c -Ilibk/" \
+		as="$(AS)" asflag="${ASFLAGS}" \
 		ld="ld" ldflag="${LDFLAGS} -Ttext $(VA_KERNEL) -e start" \
-		as="$(AS)" asflag="${ASFLAGS}" out=kernel.elf libk/* kernel/*
+		out=kernel.elf libk/* kernel/*
 
 # server
 ${WORKDIR}/zombie: server/zombie.c libk/*
-	eb cc=$(CC)\
-		workdir="${WORKDIR}" \
-    	flag="${CFLAGS} -c -Ilibk/" \
+	eb workdir="${WORKDIR}" \
+    	cc=$(CC) flag="${CFLAGS} -c -Ilibk/" \
+		as="$(AS)" asflag="${ASFLAGS}" \
 		ld="ld" ldflag="${LDFLAGS} -Ttext $(VA_USER) -e Main" ldfirst="zombie.c.o" \
-		as="$(AS)" asflag="${ASFLAGS}" out=zombie.elf server/zombie.c
+		out=zombie.elf server/zombie.c
 
 # asserts
 #asserts.bin: kernel.elf
