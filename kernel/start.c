@@ -23,16 +23,21 @@ void start(void* env)
     /* NOTE: loader already did "cli" */
     env_init(env);
     screen_init();
-    vm_init();
+    screen_clear();
     InitGDT();
     InitIDT();
+    vm_init();
 
     //screen_clear();
-    screen_printf("%d\n", env_bootinfo()->video_size);
-    screen_printf("kernsz: %d, stack: 0x%X, vram: 0x%X\n", 
-            env_bootinfo()->kern_size,
-            env_bootinfo()->stack_va,
-            env_bootinfo()->video_va);
+    screen_printf("%d\n", bootinfo.video_size);
+    screen_printf("kernsz: %d, stack: 0x%X, 0x%X, video: 0x%X, 0x%X\n", 
+            bootinfo.kern_size,
+            bootinfo.stack_va,
+            bootinfo.stack_size,
+            bootinfo.video_va,
+            bootinfo.video_size);
+
+    hltloop();
 
     InitThreading();
     timer_init(100);

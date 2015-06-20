@@ -25,9 +25,9 @@ void screen_init(void)
         outb(cmd1, RGB_TABLE[i][2]/4);
     }
 
-    _ctx.ram = env_bootinfo()->video_va;
-    _ctx.w = env_bootinfo()->xpixel;
-    _ctx.h = env_bootinfo()->ypixel;
+    _ctx.ram = bootinfo.video_va;
+    _ctx.w = bootinfo.xpixel;
+    _ctx.h = bootinfo.ypixel;
     _ctx.col = 0;
     _ctx.row = 0;
     _ctx.col_max = _ctx.w / FONT_WIDTH;

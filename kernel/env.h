@@ -41,7 +41,8 @@ typedef struct {
 } bootinfo_t;
 #pragma pack(pop)
 
+extern bootinfo_t bootinfo;
+
 void env_init(void* va);
-bootinfo_t* env_bootinfo(void);
 
 #endif

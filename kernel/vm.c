@@ -29,27 +29,27 @@ static pte_t* kva2pte(uint32 va)
 void vm_init(void)
 {
     // retrieve page directory ptr
-    _pgdir = (pgdir_t*)(env_bootinfo()->dir_va);
-    screen_printf("dir: 0x%x\n", env_bootinfo()->video_va);
+    _pgdir = (pgdir_t*)(bootinfo.dir_va);
+    screen_printf("dir: 0x%x\n", bootinfo.video_va);
 
     // activate kernel stack guard
     {
-        vm_addr_t guard = env_bootinfo()->stack_va;
+        vm_addr_t guard = bootinfo.stack_va;
         kva2pte(guard)->present = 0;
     }
 
     // note the video_pa is usually at 3.5GB or 3.75GB,
     // therefore it won't conusme any available physical memory we've detected.
-    vm_addr_t pa_end = env_bootinfo()->dir_pa + 0x1000 * 1025;
-    vm_addr_t va_end = env_bootinfo()->video_va + env_bootinfo()->video_size;
+    vm_addr_t pa_end = bootinfo.dir_pa + 0x1000 * 1025;
+    vm_addr_t va_end = bootinfo.video_va + bootinfo.video_size;
 
     // init vm_pages
     {
         // find out the segment with max available memory
         uint64 maxbeg = 0;
         uint64 maxlen = 0;
-        for (int i = 0; i < env_bootinfo()->nhmem; ++i) {
-            const smap_entry_t* entry = env_bootinfo()->ehmem+i;
+        for (int i = 0; i < bootinfo.nhmem; ++i) {
+            const smap_entry_t* entry = bootinfo.ehmem+i;
             uint64 base = (((uint64)entry->baseh) << 32) + entry->basel;
             uint64 length = (((uint64)entry->lengthh) << 32) + entry->lengthl;
 
@@ -65,7 +65,7 @@ void vm_init(void)
         // 1. mask video_pa~(video_pa+video_size) from entry?
         // 2. align maxbeg and trunc maxlen?
 
-        if (maxbeg != env_bootinfo()->kern_pa) {
+        if (maxbeg != bootinfo.kern_pa) {
             panic("maxbeg != kern_pa, though I know this restriction is stupid...");
         }
         if (pa_end < maxbeg || pa_end > maxbeg+maxlen) {
@@ -73,7 +73,7 @@ void vm_init(void)
         }
 
         // use fix point iteration to calculate npage, maybe unnecessary
-        uint64 maxused = env_bootinfo()->dir_pa - env_bootinfo()->kern_pa + 0x1000 * 1025;
+        uint64 maxused = bootinfo.dir_pa - bootinfo.kern_pa + 0x1000 * 1025;
         uint32 npage = (maxlen - maxused) / (VM_PAGE_SIZE + sizeof(vm_page_t));
         for (;;) {
             uint64 avail = maxlen - ALIGN_4K(sizeof(vm_page_t) * npage);
