@@ -25,7 +25,7 @@
 
 typedef uint32 vm_addr_t;
 
-typedef uint32 vm_offset_t;
+typedef int64 vm_offset_t;
 
 #pragma pack(push, 1)
 
@@ -57,7 +57,7 @@ typedef struct {
 typedef struct {
     pde_t pde[1024];
     pte_t pte[1024*1024];
-} KernelDirectory; // 4K+4M
+} pgdir_t; // 4K+4M
 
 #pragma pack(pop)
 
@@ -69,10 +69,7 @@ typedef struct vm_page {
 
     uint32 ref;
     bool dirty;
-    void* parent;
 
-    struct vm_page* __left__;
-    struct vm_page* __right__;
     TAILQ_ENTRY(vm_page) __pgqnode__;
     TAILQ_ENTRY(vm_page) __objnode__;
 } vm_page_t;
@@ -107,8 +104,8 @@ void vm_init();
 void vm_mapva(uint32 va, uint32 pa, bool us, bool rw);
 vm_addr_t vm_sbrk(uint32 subsym, vm_addr_t end);
 
-pte_t* GetPageTableEntry(KernelDirectory* dir, uint32 addr);
-KernelDirectory* ClonePageDirectory();
+pte_t* GetPageTableEntry(pgdir_t* dir, uint32 addr);
+pgdir_t* ClonePageDirectory();
 void SwitchPageDirectory();
 
 #endif

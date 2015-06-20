@@ -10,92 +10,107 @@
 #include <stand.h>
 #include <Bitmap.h>
 
+static pgdir_t* _pgdir = NULL;
+
 vm_object_t kernel_object;
 vm_map_t kernel_map;
-
-static void OnPageFault(IsrRegs regs);
-
-//static bool _init = false;
-static uint32 _kernPaddr = 0;
-static uint32 _kernVaddr = 0;
-
-static KernelDirectory* _dir = NULL;
 
 extern void LoadPageDirectory(uint32 dir);
 extern void EnablePaging();
 
+static void OnPageFault(IsrRegs regs);
+
 static pte_t* kva2pte(uint32 va)
 {
     uint32 ipage = va >> VM_PAGE_SHIFT;
-    return &_dir->pte[ipage];
+    return &_pgdir->pte[ipage];
 }
 
 void vm_init(void)
 {
-    uint64 maxbeg = 0;
-    uint64 maxlen = 0;
-    for (int i = 0; i < env_bootinfo()->nhmem; ++i) {
-        const smap_entry_t* entry = env_bootinfo()->ehmem+i;
-        uint64 base = (((uint64)entry->baseh) << 32) + entry->basel;
-        uint64 length = (((uint64)entry->lengthh) << 32) + entry->lengthl;
+    // retrieve page directory ptr
+    _pgdir = (pgdir_t*)(env_bootinfo()->dir_va);
+    screen_printf("dir: 0x%x\n", env_bootinfo()->video_va);
 
-        if (entry->type == 1) {
-            if (length > maxlen) {
-                maxbeg = base;
-                maxlen = length;
-            }
-        }
+    // activate kernel stack guard
+    {
+        vm_addr_t guard = env_bootinfo()->stack_va;
+        kva2pte(guard)->present = 0;
     }
 
-    _kernPaddr = env_bootinfo()->kern_pa;
-    _kernVaddr = env_bootinfo()->kern_va;
-    const int64 poff =  (int64)_kernPaddr - _kernVaddr;
+    // note the video_pa is usually at 3.5GB or 3.75GB,
+    // therefore it won't conusme any available physical memory we've detected.
+    vm_addr_t pa_end = env_bootinfo()->dir_pa + 0x1000 * 1025;
+    vm_addr_t va_end = env_bootinfo()->video_va + env_bootinfo()->video_size;
 
-    /* init dir (loader already did it) */
-    _dir = (KernelDirectory*)(env_bootinfo()->dir_va);
-
-    uint32 endofVideo = env_bootinfo()->video_va + env_bootinfo()->video_size;
-    screen_clear();
-    screen_printf("dir: 0x%X\n", env_bootinfo()->video_va);
-
-    /* init physical memory management */
-    /* TODO:
-     * 1. don't assume kernel at the beginning of the maximum segment
-     * 2. support multi-segment
-     */
-    pm_init();
-    uint32 endofPm = 0;
+    // init vm_pages
     {
-        uint32 va = endofVideo;
-        uint32 pa = va + poff;
+        // find out the segment with max available memory
+        uint64 maxbeg = 0;
+        uint64 maxlen = 0;
+        for (int i = 0; i < env_bootinfo()->nhmem; ++i) {
+            const smap_entry_t* entry = env_bootinfo()->ehmem+i;
+            uint64 base = (((uint64)entry->baseh) << 32) + entry->basel;
+            uint64 length = (((uint64)entry->lengthh) << 32) + entry->lengthl;
 
-        // use maximum segment only
-        uint32 npage = 0;
-        for (uint32 off = pa; off < maxbeg + maxlen; off += VM_PAGE_SIZE) {
-            ++npage;
-        }
-        uint32 sz = sizeof(vm_page_t) * npage;
-        sz = ALIGN_4K(sz);
-        for (vm_addr_t i = 0; i < sz; i += VM_PAGE_SIZE) {
-            vm_mapva(va+i, pa+i, false, true);
+            if (entry->type == 1) {
+                if (length > maxlen) {
+                    maxbeg = base;
+                    maxlen = length;
+                }
+            }
         }
 
-        // init pages for the segment
-        vm_page_t* pages = (vm_page_t*)va;
+        // TODO: 
+        // 1. mask video_pa~(video_pa+video_size) from entry?
+        // 2. align maxbeg and trunc maxlen?
+
+        if (maxbeg != env_bootinfo()->kern_pa) {
+            panic("maxbeg != kern_pa, though I know this restriction is stupid...");
+        }
+        if (pa_end < maxbeg || pa_end > maxbeg+maxlen) {
+            panic("out of physical memory! this shouldn't happen...");
+        }
+
+        // use fix point iteration to calculate npage, maybe unnecessary
+        uint64 maxused = env_bootinfo()->dir_pa - env_bootinfo()->kern_pa + 0x1000 * 1025;
+        uint32 npage = (maxlen - maxused) / (VM_PAGE_SIZE + sizeof(vm_page_t));
+        for (;;) {
+            uint64 avail = maxlen - ALIGN_4K(sizeof(vm_page_t) * npage);
+            uint32 npage2 = (avail >> VM_PAGE_SHIFT);
+            if (npage <= npage2) {
+                break;
+            }
+            --npage;
+        }
+
+        // permanently map a piece of memory for vm_pages
+        uint32 sz = ALIGN_4K(sizeof(vm_page_t) * npage);
+        for (vm_addr_t off = 0; off < sz; off += VM_PAGE_SIZE) {
+            vm_mapva(va_end+off, pa_end+off, false, true);
+        }
+        vm_page_t* pages = (vm_page_t*)va_end;
+        pa_end += sz;
+        va_end += sz;
+
+        // init vm_pages
         bzero(pages, sz);
         for (uint32 i = 0; i < npage; ++i) {
-            pages[i].pa = pa + i * VM_PAGE_SIZE;
+            pages[i].pa = pa_end + i * VM_PAGE_SIZE;
             pages[i].order = PM_NORDER;
         }
 
-        // give it to pm
-        pm_add_seg(pa, maxbeg+maxlen, pages, npage);
-        endofPm = va + sz;
+        // hand over vm_pages to pm
+        pm_init();
+        pm_add_seg(pa_end, pa_end+npage*VM_PAGE_SIZE, pages, npage);
+
+        screen_printf("npage: %d avail: 0x%x\n", npage, npage*VM_PAGE_SIZE);
+        screen_printf("end of vm_pages: %x end of maxseg: %x\n", pa_end+npage*VM_PAGE_SIZE, maxbeg+maxlen);
+        pm_status();
     }
 
-    pm_status();
-
     /* init kernel heap */
+    /*
     const uint32 heapsz = 2*1024*1024;
     {
         uint32 va = endofPm;
@@ -106,32 +121,10 @@ void vm_init(void)
         }
         HeapInit(va, heapsz);
     }
-    
-    /* activate kernel stack guard */
-    {
-        uint32 guard = env_bootinfo()->stack_va;
-        kva2pte(guard)->present = 0;
-    }
-
-    /*
-    // code
-    AllocFrameAt(1*1024*1024*20, VADDR2PTE(_dir, 0), false, true);
-    _dir->pde[1*1024*1024*20/0x1000/1024].us = 1;
-
-    // context+stack
-    AllocFrameAt(1*1024*1024*20 + 0x1000, VADDR2PTE(_dir, 0x1000), false, true);
-    _dir->pde[(1*1024*1024*20/+0x1000)/0x1000/1024].us = 1;
-
-    AllocFrameAt(1*1024*1024*20 + 0x2000, VADDR2PTE(_dir, 0x2000), false, true);
-    _dir->pde[(1*1024*1024*20+0x2000)/0x1000/1024].us = 1;
-
-    // tss stack
-    AllocFrameAt(1*1024*1024*21-0x1000, VADDR2PTE(_dir, 1*1024*1024*21-0x1000), false, true);
-    _dir->pde[(1*1024*1024821-0x1000)/0x1000/1024].us = 1;
     */
 
     SetIsrHandler(IDT_PF, &OnPageFault);
-    //LoadPageDirectory((uint32)&_dir->pde);
+    //LoadPageDirectory((uint32)&_pgdir->pde);
     //EnablePaging();
 }
 
@@ -149,7 +142,7 @@ void vm_mapva(uint32 va, uint32 pa, bool us, bool rw)
     pte->rw = rw ? 1 : 0;
 }
 
-KernelDirectory* ClonePageDirectory()
+pgdir_t* ClonePageDirectory()
 {
     return 0;
 }
