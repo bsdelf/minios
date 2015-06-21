@@ -9,7 +9,7 @@
 #include "pm.h"
 #include "panic.h"
 #include "sched.h"
-#include "Heap.h"
+#include "heap.h"
 
 extern void enable_irq(int);
 extern void EnableUserMode(void);

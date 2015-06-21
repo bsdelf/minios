@@ -3,7 +3,7 @@
 #include "env.h"
 #include "screen.h"
 #include "IDT.h"
-#include "Heap.h"
+#include "heap.h"
 #include "panic.h"
 #include "asm.h"
 
@@ -113,13 +113,13 @@ void vm_init(void)
     /*
     const uint32 heapsz = 2*1024*1024;
     {
-        uint32 va = endofPm;
-        uint32 pa = endofPm + poff;
+        uint32 va = va_end;
+        uint32 pa = pa_end;
         for (uint32 i = 0; i < heapsz; i += VM_PAGE_SIZE) {
             vm_page_t* page = pm_alloc(0);
             vm_mapva(va+i, page->pa, false, true);
         }
-        HeapInit(va, heapsz);
+        heap_init(va, heapsz);
     }
     */
 

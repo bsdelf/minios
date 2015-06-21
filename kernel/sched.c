@@ -1,5 +1,5 @@
 #include "sched.h"
-#include "Heap.h"
+#include "heap.h"
 #include "panic.h"
 #include "asm.h"
 #include "screen.h"
@@ -44,7 +44,7 @@ void InitThreading(void)
     LIST_INIT(&_threadList.__list__);
 
     /* Main thread id is 0 */
-    ThreadNode* node = Calloc(sizeof(ThreadNode), false, NULL);
+    ThreadNode* node = heap_calloc(sizeof(ThreadNode));
     if (node == NULL)
         panic("InitThreading() OOM");
     node->kern = true;
@@ -61,7 +61,7 @@ void ThreadCreate(ThreadRoutine fn, void* arg, bool isKernel)
 
     void* mem = NULL;
     if (isKernel)
-        mem = Calloc(sizeof(ThreadNode) + STACK_SIZE, false, NULL);
+        mem = heap_calloc(sizeof(ThreadNode) + STACK_SIZE);
     else
         mem = (void*)0x1000;
 
@@ -133,7 +133,7 @@ static void OnThreadExit(void)
         next = LIST_FIRST(&_threadList.__list__);
 
     LIST_REMOVE(old, __node__);
-    Free(old);
+    heap_release(old);
     _threadList.count--;
     _threadList.cursor = next;
 

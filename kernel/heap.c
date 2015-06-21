@@ -1,4 +1,4 @@
-#include "Heap.h"
+#include "heap.h"
 #include "panic.h"
 #include <stand.h>
 
@@ -9,51 +9,49 @@
 #endif
 
 #pragma pack(push, 1)
-typedef struct Chunk {
+typedef struct chunk {
     // header (payload size)
     uint32 size;
     // payload
-    struct Chunk* prev;
-    struct Chunk* next;
-} Chunk; // 4+4+4=12B
+    struct chunk* prev;
+    struct chunk* next;
+} chunk_t; // 4+4+4=12B
 #pragma pack(pop)
 
 #define CHUNK_HEADER_SIZE (sizeof(uint32))
 #define CHUNK_PAYLOAD(chunk) ((void*)&(chunk->prev))
 
-typedef struct {
-    uint32 total;
+struct {
+    uint32 occup;
     uint32 avail;
-    Chunk* first;
-} HeapStats;
+    chunk_t* first;
+} _stats = { 0, 0, NULL };
 
-static HeapStats _stats = { 0, 0, NULL };
-
-void HeapInit(uint32 addr, uint32 size)
+void heap_init(uint32 va, uint32 size)
 {
-    if (size < sizeof(Chunk)) {
+    if (size < sizeof(chunk_t)) {
         return;
     }
 
-    Chunk* chunk = (Chunk*)addr;
+    chunk_t* chunk = (chunk_t*)va;
     chunk->size = size - CHUNK_HEADER_SIZE;
     chunk->next = NULL;
     chunk->prev = NULL;
 
-    _stats.total = size;
+    _stats.occup = size;
     _stats.avail = chunk->size;
     _stats.first = chunk;
 }
 
-void* Malloc(uint32 size, bool align, uint32* paddr)
+void* heap_alloc(uint32 size)
 {
-    if (size < sizeof(Chunk))
-        size = sizeof(Chunk);
+    if (size < sizeof(chunk_t))
+        size = sizeof(chunk_t);
 
     if (size > _stats.avail) return NULL;
 
     // find first suitable chunk
-    Chunk* chunk = _stats.first;
+    chunk_t* chunk = _stats.first;
     while (chunk->size < size) {
         chunk = chunk->next;
         // fragment
@@ -62,9 +60,9 @@ void* Malloc(uint32 size, bool align, uint32* paddr)
 
     // update linkage
     const uint32 resetChunkSize = chunk->size - size;
-    if (resetChunkSize >= sizeof(Chunk)) {
+    if (resetChunkSize >= sizeof(chunk_t)) {
         // split
-        Chunk* rest = (Chunk*)(CHUNK_PAYLOAD(chunk) + size);
+        chunk_t* rest = (chunk_t*)(CHUNK_PAYLOAD(chunk) + size);
         rest->size = resetChunkSize - CHUNK_HEADER_SIZE;
         rest->prev = chunk->prev;
         rest->next = chunk->next;
@@ -93,19 +91,19 @@ void* Malloc(uint32 size, bool align, uint32* paddr)
     return CHUNK_PAYLOAD(chunk);
 }
 
-void* Calloc(uint32 size, bool align, uint32* paddr)
+void* heap_calloc(uint32 size)
 {
-    void* mem = Malloc(size, align, paddr);
-    if (mem != NULL)
-        bzero(mem, size);
-    return mem;
+    void* va = heap_alloc(size);
+    if (va != NULL)
+        bzero(va, size);
+    return va;
 }
 
-void Free(void* mem)
+void heap_release(void* va)
 {
-    Chunk* chunk = (Chunk*)(mem - CHUNK_HEADER_SIZE);
+    chunk_t* chunk = (chunk_t*)(va - CHUNK_HEADER_SIZE);
 
-    printf("free: %u\n", chunk->size);
+    printf("heap_release: %u\n", chunk->size);
 
     _stats.avail += chunk->size;
 
@@ -116,7 +114,7 @@ void Free(void* mem)
         return;
     }
 
-    Chunk* pos = _stats.first;
+    chunk_t* pos = _stats.first;
     while (pos < chunk) {
         printf(".\n");
         pos = pos->next;
@@ -139,10 +137,11 @@ void Free(void* mem)
     pos->prev = chunk;
 
 merge:
-    // merge ---<o---
-    for (Chunk* prev = chunk->prev; prev != NULL; ) {
+    // merge forward ---<o---
+    for (chunk_t* prev = chunk->prev; prev != NULL; ) {
         printf("<? %p - %p %u\n", (CHUNK_PAYLOAD(prev) + prev->size), (void*)chunk, prev->size);
 
+        // give up if there is a gap
         if ((CHUNK_PAYLOAD(prev) + prev->size) != (void*)chunk)
             break;
 
@@ -159,10 +158,11 @@ merge:
         chunk = prev;
         prev = chunk->prev;
     }
-    // merge ---o>---
-    for (Chunk* next = chunk->next; next != NULL; ) {
+    // merge backward ---o>---
+    for (chunk_t* next = chunk->next; next != NULL; ) {
         printf(">? %p - %p %u\n", (CHUNK_PAYLOAD(chunk) + chunk->size), next, chunk->size);
 
+        // give up if there is a gap
         if ((CHUNK_PAYLOAD(chunk) + chunk->size) != (void*)next)
             break;
 
@@ -182,20 +182,20 @@ merge:
     printf("avail: %u\n", _stats.avail);
 }
 
-uint32 KHeapAvail(void)
+uint32 heap_avail(void)
 {
     return _stats.avail;
 }
 
-uint32 KHeapTotal(void)
+uint32 heap_occup(void)
 {
-    return _stats.total;
+    return _stats.occup;
 }
 
-void PrintKHeap(void)
+void heap_status(void)
 {
     int i = 0;
-    for (Chunk* chunk = _stats.first; chunk != NULL; chunk = chunk->next) {
+    for (chunk_t* chunk = _stats.first; chunk != NULL; chunk = chunk->next) {
         printf("%d:  %p %u\n", i++, chunk, chunk->size);
     }
 }
