@@ -1,5 +1,5 @@
-#ifndef UMA_H
-#define UMA_H
+#ifndef SLAB_H
+#define SLAB_H
 
 #include <types.h>
 #include <queue.h>

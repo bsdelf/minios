@@ -1,4 +1,4 @@
-#include "uma.h"
+#include "slab.h"
 
 void uma_init(void)
 {
