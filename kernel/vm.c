@@ -23,7 +23,7 @@ static void OnPageFault(IsrRegs regs);
 static pte_t* kva2pte(uint32 va)
 {
     uint32 ipage = va >> VM_PAGE_SHIFT;
-    return &_pgdir->pte[ipage];
+    return &_pgdir->ptes[ipage];
 }
 
 void vm_init(void)

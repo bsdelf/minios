@@ -55,8 +55,8 @@ typedef struct {
 } pde_t; // 4B
 
 typedef struct {
-    pde_t pde[1024];
-    pte_t pte[1024*1024];
+    pde_t pdes[1024];
+    pte_t ptes[1024*1024];
 } pgdir_t; // 4K+4M
 
 #pragma pack(pop)
